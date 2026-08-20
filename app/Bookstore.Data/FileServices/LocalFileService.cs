@@ -22,7 +22,7 @@ namespace Bookstore.Data.FileServices
             return Task.CompletedTask;
         }
 
-        public async Task<string> SaveAsync(Stream file, string filename)
+        public async Task<string?> SaveAsync(Stream file, string filename)
         {
             if (file == null) return null;
 

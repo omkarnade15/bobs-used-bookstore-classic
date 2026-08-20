@@ -31,7 +31,7 @@ namespace Bookstore.Data.FileServices
             await transferUtility.S3Client.DeleteObjectAsync(request);
         }
 
-        public async Task<string> SaveAsync(Stream contents, string filename)
+        public async Task<string?> SaveAsync(Stream contents, string filename)
         {
             if (contents == null) return null;
 
