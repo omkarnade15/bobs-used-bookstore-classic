@@ -1,12 +1,2 @@
-﻿using Microsoft.Owin;
-
-namespace Bookstore.Web.Helpers
-{
-    public static class OwinRequestExtensions
-    {
-        public static string GetReturnUrl(this IOwinRequest request)
-        {
-            return $"{request.Scheme}://{request.Host}/signin-oidc";
-        }
-    }
-}
+// IOwinRequestExtensions.cs — removed; OWIN no longer used.
+// The GetReturnUrl logic is now inlined in Program.cs.
