@@ -1,9 +1,5 @@
-﻿using Bookstore.Domain.Carts;
+using Bookstore.Domain.Carts;
 using Bookstore.Domain.Customers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Bookstore.Domain.Orders
 {
@@ -13,7 +9,7 @@ namespace Bookstore.Domain.Orders
 
         Task<IEnumerable<Order>> GetOrdersAsync(string sub);
 
-        Task<Order> GetOrderAsync(int id);
+        Task<Order?> GetOrderAsync(int id);
 
         Task<OrderStatistics> GetStatisticsAsync();
 
@@ -22,90 +18,87 @@ namespace Bookstore.Domain.Orders
         Task UpdateOrderStatusAsync(UpdateOrderStatusDto updateOrderStatusDto);
 
         Task CancelOrderAsync(CancelOrderDto cancelOrderDto);
-
     }
 
     public class OrderService : IOrderService
     {
-        private readonly IOrderRepository orderRepository;
-        private readonly IShoppingCartRepository shoppingCartRepository;
-        private readonly ICustomerRepository customerRepository;
+        private readonly IOrderRepository _orderRepository;
+        private readonly IShoppingCartRepository _shoppingCartRepository;
+        private readonly ICustomerRepository _customerRepository;
 
-        public OrderService(IOrderRepository orderRepository,
+        public OrderService(
+            IOrderRepository orderRepository,
             IShoppingCartRepository shoppingCartRepository,
             ICustomerRepository customerRepository)
         {
-            this.orderRepository = orderRepository;
-            this.shoppingCartRepository = shoppingCartRepository;
-            this.customerRepository = customerRepository;
+            _orderRepository = orderRepository;
+            _shoppingCartRepository = shoppingCartRepository;
+            _customerRepository = customerRepository;
         }
 
         public async Task<IPaginatedList<Order>> GetOrdersAsync(OrderFilters filters, int pageIndex = 1, int pageSize = 10)
         {
-            return await orderRepository.ListAsync(filters, pageIndex, pageSize);
+            return await _orderRepository.ListAsync(filters, pageIndex, pageSize);
         }
 
         public async Task<IEnumerable<Order>> GetOrdersAsync(string sub)
         {
-            return await orderRepository.ListAsync(sub);
+            return await _orderRepository.ListAsync(sub);
         }
 
-        public async Task<Order> GetOrderAsync(int id)
+        public async Task<Order?> GetOrderAsync(int id)
         {
-            return await orderRepository.GetAsync(id);
+            return await _orderRepository.GetAsync(id);
         }
 
         public async Task<OrderStatistics> GetStatisticsAsync()
         {
-            return (await orderRepository.GetStatisticsAsync()) ?? new OrderStatistics();
+            return await _orderRepository.GetStatisticsAsync();
         }
 
         public async Task<int> CreateOrderAsync(CreateOrderDto dto)
         {
-            var shoppingCart = await shoppingCartRepository.GetAsync(dto.CorrelationId);
+            var shoppingCart = await _shoppingCartRepository.GetAsync(dto.CorrelationId)
+                ?? throw new InvalidOperationException("Shopping cart not found.");
 
-            var customer = await customerRepository.GetAsync(dto.CustomerSub);
+            var customer = await _customerRepository.GetAsync(dto.CustomerSub)
+                ?? throw new InvalidOperationException($"Customer with sub '{dto.CustomerSub}' not found.");
 
             var order = new Order(customer.Id, dto.AddressId);
 
-            await orderRepository.AddAsync(order);
+            await _orderRepository.AddAsync(order);
 
             shoppingCart.GetShoppingCartItems(ShoppingCartItemFilter.ExcludeOutOfStockItems).ToList().ForEach(x =>
             {
                 order.AddOrderItem(x.Book, x.Quantity);
-
                 x.Book.ReduceStockLevel(x.Quantity);
-
                 shoppingCart.RemoveShoppingCartItemById(x.Id);
             });
 
-            // Because each repository implements a unit of work, changes to the shopping cart and to stock levels 
-            // are captured by the unit of work and can be persisted by called SaveChangesAsync on _any_ repository.
-            await orderRepository.SaveChangesAsync();
+            await _orderRepository.SaveChangesAsync();
 
             return order.Id;
         }
 
         public async Task UpdateOrderStatusAsync(UpdateOrderStatusDto dto)
         {
-            var order = await orderRepository.GetAsync(dto.OrderId);
+            var order = await _orderRepository.GetAsync(dto.OrderId);
+            if (order == null) return;
 
             order.OrderStatus = dto.OrderStatus;
-
             order.UpdatedOn = DateTime.UtcNow;
 
-            await orderRepository.SaveChangesAsync();
+            await _orderRepository.SaveChangesAsync();
         }
 
         public async Task CancelOrderAsync(CancelOrderDto dto)
         {
-            var order = await orderRepository.GetAsync(dto.OrderId, dto.CustomerSub);
-
+            var order = await _orderRepository.GetAsync(dto.OrderId, dto.CustomerSub);
             if (order == null) return;
 
             order.OrderStatus = OrderStatus.Cancelled;
 
-            await orderRepository.SaveChangesAsync();
+            await _orderRepository.SaveChangesAsync();
         }
     }
 }

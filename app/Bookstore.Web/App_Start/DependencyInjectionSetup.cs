@@ -1,11 +1,5 @@
-﻿using System.IO;
-using System.Reflection;
-using System.Web;
-using System.Web.Mvc;
 using Amazon.Rekognition;
 using Amazon.S3;
-using Autofac;
-using Autofac.Integration.Mvc;
 using BobsBookstoreClassic.Data;
 using Bookstore.Data;
 using Bookstore.Data.FileServices;
@@ -21,74 +15,67 @@ using Bookstore.Domain.Offers;
 using Bookstore.Domain.Orders;
 using Bookstore.Domain.ReferenceData;
 using Bookstore.Web.Helpers;
-using Owin;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bookstore.Web
 {
     public static class DependencyInjectionSetup
     {
-        public static void ConfigureDependencyInjection(IAppBuilder app)
+        public static void ConfigureDependencyInjection(IServiceCollection services, IWebHostEnvironment env)
         {
-            var builder = new ContainerBuilder();
-
-            builder.RegisterControllers(typeof(MvcApplication).Assembly);
-
-            builder.RegisterType<BookService>().As<IBookService>();
-            builder.RegisterType<OrderService>().As<IOrderService>();
-            builder.RegisterType<ReferenceDataService>().As<IReferenceDataService>();
-            builder.RegisterType<OfferService>().As<IOfferService>();
-            builder.RegisterType<CustomerService>().As<ICustomerService>();
-            builder.RegisterType<AddressService>().As<IAddressService>();
-            builder.RegisterType<ShoppingCartService>().As<IShoppingCartService>();
-            builder.RegisterType<ImageResizeService>().As<IImageResizeService>();
-
+            // EF Core DbContext
             var connectionString = BookstoreConfiguration.GetConnectionString("BookstoreDatabaseConnection");
-            builder.RegisterType<ApplicationDbContext>().WithParameter("connectionString", connectionString).InstancePerRequest();
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseSqlServer(connectionString));
 
-            builder.RegisterType<CustomerRepository>().As<ICustomerRepository>();
-            builder.RegisterType<AddressRepository>().As<IAddressRepository>();
-            builder.RegisterType<BookRepository>().As<IBookRepository>();
-            builder.RegisterType<OfferRepository>().As<IOfferRepository>();
-            builder.RegisterType<ShoppingCartRepository>().As<IShoppingCartRepository>();
-            builder.RegisterType<OrderRepository>().As<IOrderRepository>();
-            builder.RegisterType<ReferenceDataRepository>().As<IReferenceDataRepository>();
+            // Domain services
+            services.AddScoped<IBookService, BookService>();
+            services.AddScoped<IOrderService, OrderService>();
+            services.AddScoped<IReferenceDataService, ReferenceDataService>();
+            services.AddScoped<IOfferService, OfferService>();
+            services.AddScoped<ICustomerService, CustomerService>();
+            services.AddScoped<IAddressService, AddressService>();
+            services.AddScoped<IShoppingCartService, ShoppingCartService>();
+            services.AddScoped<IImageResizeService, ImageResizeService>();
 
-            builder.RegisterGeneric(typeof(PaginatedList<>)).As(typeof(IPaginatedList<>)).InstancePerLifetimeScope();
+            // Repositories
+            services.AddScoped<ICustomerRepository, CustomerRepository>();
+            services.AddScoped<IAddressRepository, AddressRepository>();
+            services.AddScoped<IBookRepository, BookRepository>();
+            services.AddScoped<IOfferRepository, OfferRepository>();
+            services.AddScoped<IShoppingCartRepository, ShoppingCartRepository>();
+            services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+            services.AddScoped(typeof(IPaginatedList<>), typeof(PaginatedList<>));
 
+            // File service
             if (BookstoreConfiguration.GetSetting("Services/FileService") == "aws")
             {
-                builder.RegisterType<AmazonS3Client>().As<IAmazonS3>();
-                builder.RegisterType<S3FileService>().As<IFileService>();
+                services.AddSingleton<IAmazonS3, AmazonS3Client>();
+                services.AddScoped<IFileService, S3FileService>();
             }
             else
             {
-                var webRootPath = HttpRuntime.AppDomainAppVirtualPath != null ?
-                    Path.Combine(HttpRuntime.AppDomainAppPath, "Content") :
-                    Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-
-                builder.RegisterInstance(new LocalFileService(webRootPath)).As<IFileService>();
+                var webRootPath = env.WebRootPath ?? env.ContentRootPath;
+                services.AddSingleton<IFileService>(new LocalFileService(webRootPath));
             }
 
+            // Image validation
             if (BookstoreConfiguration.GetSetting("Services/ImageValidationService") == "aws")
             {
-                builder.RegisterType<AmazonRekognitionClient>().As<IAmazonRekognition>();
-                builder.RegisterType<RekognitionImageValidationService>().As<IImageValidationService>();
+                services.AddSingleton<IAmazonRekognition, AmazonRekognitionClient>();
+                services.AddScoped<IImageValidationService, RekognitionImageValidationService>();
             }
             else
             {
-                builder.RegisterType<LocalImageValidationService>().As<IImageValidationService>();
+                services.AddScoped<IImageValidationService, LocalImageValidationService>();
             }
 
+            // Local auth middleware (only registered for local auth scenario)
             if (BookstoreConfiguration.GetSetting("Services/Authentication") != "aws")
             {
-                builder.RegisterType<LocalAuthenticationMiddleware>();
+                services.AddScoped<LocalAuthenticationMiddleware>();
             }
-
-            var container = builder.Build();
-
-            DependencyResolver.SetResolver(new AutofacDependencyResolver(container));
-
-            app.UseAutofacMiddleware(container);
         }
     }
 }

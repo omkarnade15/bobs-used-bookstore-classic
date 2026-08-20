@@ -1,8 +1,4 @@
-﻿using Bookstore.Domain.Orders;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
+using Bookstore.Domain.Orders;
 
 namespace Bookstore.Domain.Books
 {
@@ -21,49 +17,53 @@ namespace Bookstore.Domain.Books
         Task<BookResult> AddAsync(CreateBookDto createBookDto);
 
         Task<BookResult> UpdateAsync(UpdateBookDto updateBookDto);
-
     }
 
     public class BookService : IBookService
     {
-        private readonly IImageResizeService imageResizeService;
-        private readonly IImageValidationService imageValidationService;
-        private readonly IFileService fileService;
-        private readonly IBookRepository bookRepository;
-        private readonly IOrderRepository orderRepository;
+        private readonly IImageResizeService _imageResizeService;
+        private readonly IImageValidationService _imageValidationService;
+        private readonly IFileService _fileService;
+        private readonly IBookRepository _bookRepository;
+        private readonly IOrderRepository _orderRepository;
 
-        public BookService(IImageResizeService imageResizeService, IImageValidationService imageValidationService, IFileService fileService, IBookRepository bookRepository, IOrderRepository orderRepository)
+        public BookService(
+            IImageResizeService imageResizeService,
+            IImageValidationService imageValidationService,
+            IFileService fileService,
+            IBookRepository bookRepository,
+            IOrderRepository orderRepository)
         {
-            this.imageResizeService = imageResizeService;
-            this.imageValidationService = imageValidationService;
-            this.fileService = fileService;
-            this.bookRepository = bookRepository;
-            this.orderRepository = orderRepository;
+            _imageResizeService = imageResizeService;
+            _imageValidationService = imageValidationService;
+            _fileService = fileService;
+            _bookRepository = bookRepository;
+            _orderRepository = orderRepository;
         }
 
         public async Task<Book> GetBookAsync(int id)
         {
-            return await bookRepository.GetAsync(id);
+            return await _bookRepository.GetAsync(id);
         }
 
         public async Task<IPaginatedList<Book>> GetBooksAsync(BookFilters filters, int pageIndex, int pageSize)
         {
-            return await bookRepository.ListAsync(filters, pageIndex, pageSize);
+            return await _bookRepository.ListAsync(filters, pageIndex, pageSize);
         }
 
         public async Task<IPaginatedList<Book>> GetBooksAsync(string searchString, string sortBy, int pageIndex, int pageSize)
         {
-            return await bookRepository.ListAsync(searchString, sortBy, pageIndex, pageSize);
+            return await _bookRepository.ListAsync(searchString, sortBy, pageIndex, pageSize);
         }
 
         public async Task<IEnumerable<Book>> ListBestSellingBooksAsync(int count)
         {
-            return await orderRepository.ListBestSellingBooksAsync(count);
+            return await _orderRepository.ListBestSellingBooksAsync(count);
         }
 
         public async Task<BookStatistics> GetStatisticsAsync()
         {
-            return (await bookRepository.GetStatisticsAsync()) ?? new BookStatistics();
+            return await _bookRepository.GetStatisticsAsync();
         }
 
         public async Task<BookResult> AddAsync(CreateBookDto dto)
@@ -81,14 +81,14 @@ namespace Bookstore.Domain.Books
                 dto.Year,
                 dto.Summary);
 
-            await bookRepository.AddAsync(book);
+            await _bookRepository.AddAsync(book);
 
             return await SaveAsync(book, dto.CoverImage, dto.CoverImageFileName);
         }
 
         public async Task<BookResult> UpdateAsync(UpdateBookDto dto)
         {
-            var book = await bookRepository.GetAsync(dto.BookId);
+            var book = await _bookRepository.GetAsync(dto.BookId);
 
             book.Name = dto.Name;
             book.Author = dto.Author;
@@ -103,42 +103,40 @@ namespace Bookstore.Domain.Books
             book.Summary = dto.Summary;
             book.UpdatedOn = DateTime.UtcNow;
 
-            await bookRepository.UpdateAsync(book);
+            await _bookRepository.UpdateAsync(book);
 
             return await SaveAsync(book, dto.CoverImage, dto.CoverImageFileName);
         }
 
-        private async Task<BookResult> SaveAsync(Book book, Stream coverImage, string coverImageFileName)
+        private async Task<BookResult> SaveAsync(Book book, Stream? coverImage, string? coverImageFileName)
         {
             var resizedCoverImage = await ResizeImageAsync(coverImage);
+            var imageIsSafe = await _imageValidationService.IsSafeAsync(resizedCoverImage ?? coverImage!);
 
-            var imageIsSafe = await imageValidationService.IsSafeAsync(coverImage);
-
-            if (!imageIsSafe) return new BookResult(false, "The image failed the safety check. Please try another image.");
+            if (!imageIsSafe)
+                return new BookResult(false, "The image failed the safety check. Please try another image.");
 
             await SaveImageAsync(book, resizedCoverImage, coverImageFileName);
 
-            await bookRepository.SaveChangesAsync();
+            await _bookRepository.SaveChangesAsync();
 
             return new BookResult(true, null);
         }
 
-        private async Task<Stream> ResizeImageAsync(Stream coverImage)
+        private async Task<Stream?> ResizeImageAsync(Stream? coverImage)
         {
             if (coverImage == null) return null;
-
-            return await imageResizeService.ResizeImageAsync(coverImage);
+            return await _imageResizeService.ResizeImageAsync(coverImage);
         }
 
-        private async Task SaveImageAsync(Book book, Stream coverImage, string coverImageFilename)
+        private async Task SaveImageAsync(Book book, Stream? coverImage, string? coverImageFilename)
         {
-            var imageUrl = await fileService.SaveAsync(coverImage, coverImageFilename);
+            if (coverImage == null) return;
 
-            if (coverImage != null)
-            {
-                await fileService.DeleteAsync(book.CoverImageUrl);
-                book.CoverImageUrl = imageUrl;
-            }
+            var imageUrl = await _fileService.SaveAsync(coverImage, coverImageFilename ?? string.Empty);
+
+            await _fileService.DeleteAsync(book.CoverImageUrl ?? string.Empty);
+            book.CoverImageUrl = imageUrl;
         }
     }
 }

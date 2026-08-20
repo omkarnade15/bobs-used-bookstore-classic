@@ -1,12 +1,10 @@
-﻿using Bookstore.Domain.Customers;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Bookstore.Domain.Customers;
 
 namespace Bookstore.Domain.Addresses
 {
     public interface IAddressService
     {
-        Task<Address> GetAddressAsync(string sub, int id);
+        Task<Address?> GetAddressAsync(string sub, int id);
 
         Task<IEnumerable<Address>> GetAddressesAsync(string sub);
 
@@ -19,38 +17,40 @@ namespace Bookstore.Domain.Addresses
 
     public class AddressService : IAddressService
     {
-        private readonly IAddressRepository addressRepository;
-        private readonly ICustomerRepository customerRepository;
+        private readonly IAddressRepository _addressRepository;
+        private readonly ICustomerRepository _customerRepository;
 
         public AddressService(IAddressRepository addressRepository, ICustomerRepository customerRepository)
         {
-            this.addressRepository = addressRepository;
-            this.customerRepository = customerRepository;
+            _addressRepository = addressRepository;
+            _customerRepository = customerRepository;
         }
 
-        public async Task<Address> GetAddressAsync(string sub, int id)
+        public async Task<Address?> GetAddressAsync(string sub, int id)
         {
-            return await addressRepository.GetAsync(sub, id);
+            return await _addressRepository.GetAsync(sub, id);
         }
 
         public async Task<IEnumerable<Address>> GetAddressesAsync(string sub)
         {
-            return await addressRepository.ListAsync(sub);
+            return await _addressRepository.ListAsync(sub);
         }
 
         public async Task CreateAddressAsync(CreateAddressDto dto)
         {
-            var customer = await customerRepository.GetAsync(dto.CustomerSub);
+            var customer = await _customerRepository.GetAsync(dto.CustomerSub)
+                ?? throw new InvalidOperationException($"Customer with sub '{dto.CustomerSub}' not found.");
+
             var address = new Address(customer, dto.AddressLine1, dto.AddressLine2, dto.City, dto.State, dto.Country, dto.ZipCode);
 
-            await addressRepository.AddAsync(address);
-
-            await addressRepository.SaveChangesAsync();
+            await _addressRepository.AddAsync(address);
+            await _addressRepository.SaveChangesAsync();
         }
 
         public async Task UpdateAddressAsync(UpdateAddressDto dto)
         {
-            var address = await addressRepository.GetAsync(dto.CustomerSub, dto.AddressId);
+            var address = await _addressRepository.GetAsync(dto.CustomerSub, dto.AddressId);
+            if (address == null) return;
 
             address.AddressLine1 = dto.AddressLine1;
             address.AddressLine2 = dto.AddressLine2;
@@ -59,14 +59,13 @@ namespace Bookstore.Domain.Addresses
             address.Country = dto.Country;
             address.ZipCode = dto.ZipCode;
 
-            await addressRepository.SaveChangesAsync();
+            await _addressRepository.SaveChangesAsync();
         }
 
         public async Task DeleteAddressAsync(DeleteAddressDto dto)
         {
-            await addressRepository.DeleteAsync(dto.CustomerSub, dto.AddressId);
-
-            await addressRepository.SaveChangesAsync();
+            await _addressRepository.DeleteAsync(dto.CustomerSub, dto.AddressId);
+            await _addressRepository.SaveChangesAsync();
         }
     }
 }

@@ -1,30 +1,29 @@
-﻿using Bookstore.Domain.Books;
+using Bookstore.Domain.Books;
 using Bookstore.Domain.Offers;
 using Bookstore.Domain.Orders;
 using Bookstore.Web.Areas.Admin.Models.Dashboard;
-using System.Threading.Tasks;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Bookstore.Web.Areas.Admin.Controllers
 {
     public class DashboardController : AdminAreaControllerBase
     {
-        private readonly IOrderService orderService;
-        private readonly IOfferService offerService;
-        private readonly IBookService bookService;
+        private readonly IOrderService _orderService;
+        private readonly IOfferService _offerService;
+        private readonly IBookService _bookService;
 
         public DashboardController(IOrderService orderService, IOfferService offerService, IBookService bookService)
         {
-            this.orderService = orderService;
-            this.offerService = offerService;
-            this.bookService = bookService;
+            _orderService = orderService;
+            _offerService = offerService;
+            _bookService = bookService;
         }
 
-        public async Task<ActionResult> Index()
+        public async Task<IActionResult> Index()
         {
-            var orderStats = await orderService.GetStatisticsAsync();
-            var offerStats = await offerService.GetStatisticsAsync();
-            var inventoryStats = await bookService.GetStatisticsAsync();
+            var orderStats = await _orderService.GetStatisticsAsync();
+            var offerStats = await _offerService.GetStatisticsAsync();
+            var inventoryStats = await _bookService.GetStatisticsAsync();
 
             var model = new DashboardIndexViewModel
             {

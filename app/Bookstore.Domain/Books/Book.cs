@@ -20,8 +20,8 @@ namespace Bookstore.Domain.Books
             decimal price,
             int quantity, 
             int? year = null,
-            string summary = null,
-            string coverImageUrl = null)
+            string? summary = null,
+            string? coverImageUrl = null)
         {
             Name = name;
             Author = author;
@@ -57,9 +57,9 @@ namespace Bookstore.Domain.Books
         public ReferenceDataItem Condition { get; set; }
         public int ConditionId { get; set; }
 
-        public string CoverImageUrl { get; set; }
+        public string? CoverImageUrl { get; set; }
 
-        public string Summary { get; set; }
+        public string? Summary { get; set; }
 
         public decimal Price { get; set; }
 
