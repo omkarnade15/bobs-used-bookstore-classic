@@ -1,10 +1,8 @@
-﻿using System.Threading.Tasks;
-
 namespace Bookstore.Domain.Carts
 {
     public interface IShoppingCartService
     {
-        Task<ShoppingCart> GetShoppingCartAsync(string correlationId);
+        Task<ShoppingCart?> GetShoppingCartAsync(string correlationId);
 
         Task AddToShoppingCartAsync(AddToShoppingCartDto addToShoppingCartDto);
 
@@ -19,81 +17,71 @@ namespace Bookstore.Domain.Carts
 
     public class ShoppingCartService : IShoppingCartService
     {
-        private readonly IShoppingCartRepository shoppingCartRepository;
+        private readonly IShoppingCartRepository _shoppingCartRepository;
 
         public ShoppingCartService(IShoppingCartRepository shoppingCartRepository)
         {
-            this.shoppingCartRepository = shoppingCartRepository;
+            _shoppingCartRepository = shoppingCartRepository;
         }
 
-        public async Task<ShoppingCart> GetShoppingCartAsync(string shoppingCartCorrelationId)
+        public async Task<ShoppingCart?> GetShoppingCartAsync(string shoppingCartCorrelationId)
         {
-            return await shoppingCartRepository.GetAsync(shoppingCartCorrelationId);
+            return await _shoppingCartRepository.GetAsync(shoppingCartCorrelationId);
         }
 
         public async Task AddToShoppingCartAsync(AddToShoppingCartDto dto)
         {
-            await AddToShoppingCartAsync(dto.CorrelationId, dto.BookId, dto.Quantity, true);
+            await AddToShoppingCartInternalAsync(dto.CorrelationId, dto.BookId, dto.Quantity, true);
         }
 
         public async Task AddToWishlistAsync(AddToWishlistDto dto)
         {
-            await AddToShoppingCartAsync(dto.CorrelationId, dto.BookId, 1, false);
+            await AddToShoppingCartInternalAsync(dto.CorrelationId, dto.BookId, 1, false);
         }
 
-        private async Task AddToShoppingCartAsync(string correlationId, int bookId, int quantity, bool wantToBuy)
+        private async Task AddToShoppingCartInternalAsync(string correlationId, int bookId, int quantity, bool wantToBuy)
         {
-            var shoppingCart = await shoppingCartRepository.GetAsync(correlationId);
+            var shoppingCart = await _shoppingCartRepository.GetAsync(correlationId);
 
             if (shoppingCart == null)
             {
                 shoppingCart = new ShoppingCart(correlationId);
-
-                await shoppingCartRepository.AddAsync(shoppingCart);
+                await _shoppingCartRepository.AddAsync(shoppingCart);
             }
 
             if (wantToBuy)
-            {
                 shoppingCart.AddItemToShoppingCart(bookId, quantity);
-            }
             else
-            {
                 shoppingCart.AddItemToWishlist(bookId);
-            }
 
-            await shoppingCartRepository.SaveChangesAsync();
+            await _shoppingCartRepository.SaveChangesAsync();
         }
 
         public async Task MoveWishlistItemToShoppingCartAsync(MoveWishlistItemToShoppingCartDto dto)
         {
-            var shoppingCart = await shoppingCartRepository.GetAsync(dto.CorrelationId);
-
-            shoppingCart.MoveWishListItemToShoppingCart(dto.ShoppingCartItemId);
-
-            await shoppingCartRepository.SaveChangesAsync();
+            var shoppingCart = await _shoppingCartRepository.GetAsync(dto.CorrelationId);
+            shoppingCart?.MoveWishListItemToShoppingCart(dto.ShoppingCartItemId);
+            await _shoppingCartRepository.SaveChangesAsync();
         }
 
         public async Task MoveAllWishlistItemsToShoppingCartAsync(MoveAllWishlistItemsToShoppingCartDto dto)
         {
-            var shoppingCart = await shoppingCartRepository.GetAsync(dto.CorrelationId);
-
-                if (shoppingCart == null) return;
+            var shoppingCart = await _shoppingCartRepository.GetAsync(dto.CorrelationId);
+            if (shoppingCart == null) return;
 
             foreach (var wishListItem in shoppingCart.GetWishListItems())
             {
                 shoppingCart.MoveWishListItemToShoppingCart(wishListItem.Id);
             }
 
-            await shoppingCartRepository.SaveChangesAsync();
+            await _shoppingCartRepository.SaveChangesAsync();
         }
 
         public async Task DeleteShoppingCartItemAsync(DeleteShoppingCartItemDto dto)
         {
-            var shoppingCart = await shoppingCartRepository.GetAsync(dto.CorrelationId);
-
-            shoppingCart.RemoveShoppingCartItemById(dto.ShoppingCartItemId);
-
-            await shoppingCartRepository.SaveChangesAsync();
+            var shoppingCart = await _shoppingCartRepository.GetAsync(dto.CorrelationId);
+            shoppingCart?.RemoveShoppingCartItemById(dto.ShoppingCartItemId);
+            await _shoppingCartRepository.SaveChangesAsync();
         }
     }
 }

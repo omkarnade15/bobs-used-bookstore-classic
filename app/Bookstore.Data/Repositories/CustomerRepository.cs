@@ -1,36 +1,35 @@
-﻿using Bookstore.Domain.Customers;
-using System.Data.Entity;
-using System.Threading.Tasks;
+using Bookstore.Domain.Customers;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bookstore.Data.Repositories
 {
     public class CustomerRepository : ICustomerRepository
     {
-        private readonly ApplicationDbContext dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
         public CustomerRepository(ApplicationDbContext dbContext)
         {
-            this.dbContext = dbContext;
+            _dbContext = dbContext;
         }
 
         async Task ICustomerRepository.AddAsync(Customer customer)
         {
-            await Task.Run(() => dbContext.Customer.Add(customer));
+            await _dbContext.Customer.AddAsync(customer);
         }
 
-        async Task<Customer> ICustomerRepository.GetAsync(int id)
+        async Task<Customer?> ICustomerRepository.GetAsync(int id)
         {
-            return await dbContext.Customer.FindAsync(id);
+            return await _dbContext.Customer.FindAsync(id);
         }
 
-        async Task<Customer> ICustomerRepository.GetAsync(string sub)
+        async Task<Customer?> ICustomerRepository.GetAsync(string sub)
         {
-            return await dbContext.Customer.SingleOrDefaultAsync(x => x.Sub == sub);
+            return await _dbContext.Customer.SingleOrDefaultAsync(x => x.Sub == sub);
         }
 
         async Task ICustomerRepository.SaveChangesAsync()
         {
-            await dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

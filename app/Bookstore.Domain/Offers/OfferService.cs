@@ -1,8 +1,4 @@
-﻿using Bookstore.Domain.Customers;
-using Bookstore.Domain.Orders;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using Bookstore.Domain.Customers;
 
 namespace Bookstore.Domain.Offers
 {
@@ -12,7 +8,7 @@ namespace Bookstore.Domain.Offers
 
         Task<IEnumerable<Offer>> GetOffersAsync(string sub);
 
-        Task<Offer> GetOfferAsync(int offerId);
+        Task<Offer?> GetOfferAsync(int offerId);
 
         Task CreateOfferAsync(CreateOfferDto createOfferDto);
 
@@ -23,33 +19,34 @@ namespace Bookstore.Domain.Offers
 
     public class OfferService : IOfferService
     {
-        private readonly IOfferRepository offerRepository;
-        private readonly ICustomerRepository customerRepository;
+        private readonly IOfferRepository _offerRepository;
+        private readonly ICustomerRepository _customerRepository;
 
         public OfferService(IOfferRepository offerRepository, ICustomerRepository customerRepository)
         {
-            this.offerRepository = offerRepository;
-            this.customerRepository = customerRepository;
+            _offerRepository = offerRepository;
+            _customerRepository = customerRepository;
         }
 
         public async Task<IPaginatedList<Offer>> GetOffersAsync(OfferFilters filters, int pageIndex, int pageSize)
         {
-            return await offerRepository.ListAsync(filters, pageIndex, pageSize);
+            return await _offerRepository.ListAsync(filters, pageIndex, pageSize);
         }
 
         public async Task<IEnumerable<Offer>> GetOffersAsync(string sub)
         {
-            return await offerRepository.ListAsync(sub);
+            return await _offerRepository.ListAsync(sub);
         }
 
-        public async Task<Offer> GetOfferAsync(int id)
+        public async Task<Offer?> GetOfferAsync(int id)
         {
-            return await offerRepository.GetAsync(id);
+            return await _offerRepository.GetAsync(id);
         }
 
         public async Task CreateOfferAsync(CreateOfferDto dto)
         {
-            var customer = await customerRepository.GetAsync(dto.CustomerSub);
+            var customer = await _customerRepository.GetAsync(dto.CustomerSub)
+                ?? throw new InvalidOperationException($"Customer with sub '{dto.CustomerSub}' not found.");
 
             var offer = new Offer(
                 customer.Id,
@@ -62,25 +59,24 @@ namespace Bookstore.Domain.Offers
                 dto.PublisherId,
                 dto.BookPrice);
 
-            await offerRepository.AddAsync(offer);
-
-            await offerRepository.SaveChangesAsync();
+            await _offerRepository.AddAsync(offer);
+            await _offerRepository.SaveChangesAsync();
         }
 
         public async Task UpdateOfferStatusAsync(UpdateOfferStatusDto dto)
         {
             var offer = await GetOfferAsync(dto.OfferId);
+            if (offer == null) return;
 
             offer.OfferStatus = dto.Status;
-
             offer.UpdatedOn = DateTime.UtcNow;
 
-            await offerRepository.SaveChangesAsync();
+            await _offerRepository.SaveChangesAsync();
         }
 
         public async Task<OfferStatistics> GetStatisticsAsync()
         {
-            return (await offerRepository.GetStatisticsAsync()) ?? new OfferStatistics();
+            return await _offerRepository.GetStatisticsAsync();
         }
     }
 }

@@ -1,37 +1,35 @@
-﻿using System.IO;
-
 namespace Bookstore.Domain.Books
 {
     public class CreateBookDto
     {
         public CreateBookDto(
-        string Name,
-        string Author,
-        int BookTypeId,
-        int ConditionId,
-        int GenreId,
-        int PublisherId,
-        int? Year,
-        string ISBN,
-        string Summary,
-        decimal Price,
-        int Quantity,
-        Stream CoverImage,
-        string CoverImageFileName)
+            string name,
+            string author,
+            int bookTypeId,
+            int conditionId,
+            int genreId,
+            int publisherId,
+            int? year,
+            string isbn,
+            string? summary,
+            decimal price,
+            int quantity,
+            Stream? coverImage,
+            string? coverImageFileName)
         {
-            this.Name = Name;
-            this.Author = Author;
-            this.BookTypeId = BookTypeId;
-            this.ConditionId = ConditionId;
-            this.GenreId = GenreId;
-            this.PublisherId = PublisherId;
-            this.Year = Year;
-            this.ISBN = ISBN;
-            this.Summary = Summary;
-            this.Price = Price;
-            this.Quantity = Quantity;
-            this.CoverImage = CoverImage;
-            this.CoverImageFileName = CoverImageFileName;
+            Name = name;
+            Author = author;
+            BookTypeId = bookTypeId;
+            ConditionId = conditionId;
+            GenreId = genreId;
+            PublisherId = publisherId;
+            Year = year;
+            ISBN = isbn;
+            Summary = summary;
+            Price = price;
+            Quantity = quantity;
+            CoverImage = coverImage;
+            CoverImageFileName = coverImageFileName;
         }
 
         public string Name { get; }
@@ -42,45 +40,45 @@ namespace Bookstore.Domain.Books
         public int PublisherId { get; }
         public int? Year { get; }
         public string ISBN { get; }
-        public string Summary { get; }
+        public string? Summary { get; }
         public decimal Price { get; }
         public int Quantity { get; }
-        public Stream CoverImage { get; }
-        public string CoverImageFileName { get; }
+        public Stream? CoverImage { get; }
+        public string? CoverImageFileName { get; }
     }
 
     public class UpdateBookDto
     {
         public UpdateBookDto(
-        int BookId,
-        string Name,
-        string Author,
-        int BookTypeId,
-        int ConditionId,
-        int GenreId,
-        int PublisherId,
-        int? Year,
-        string ISBN,
-        string Summary,
-        decimal Price,
-        int Quantity,
-        Stream CoverImage,
-        string CoverImageFileName)
+            int bookId,
+            string name,
+            string author,
+            int bookTypeId,
+            int conditionId,
+            int genreId,
+            int publisherId,
+            int? year,
+            string isbn,
+            string? summary,
+            decimal price,
+            int quantity,
+            Stream? coverImage,
+            string? coverImageFileName)
         {
-            this.BookId = BookId;
-            this.Name = Name;
-            this.Author = Author;
-            this.BookTypeId = BookTypeId;
-            this.ConditionId = ConditionId;
-            this.GenreId = GenreId;
-            this.PublisherId = PublisherId;
-            this.Year = Year;
-            this.ISBN = ISBN;
-            this.Summary = Summary;
-            this.Price = Price;
-            this.Quantity = Quantity;
-            this.CoverImage = CoverImage;
-            this.CoverImageFileName = CoverImageFileName;
+            BookId = bookId;
+            Name = name;
+            Author = author;
+            BookTypeId = bookTypeId;
+            ConditionId = conditionId;
+            GenreId = genreId;
+            PublisherId = publisherId;
+            Year = year;
+            ISBN = isbn;
+            Summary = summary;
+            Price = price;
+            Quantity = quantity;
+            CoverImage = coverImage;
+            CoverImageFileName = coverImageFileName;
         }
 
         public int BookId { get; }
@@ -92,10 +90,10 @@ namespace Bookstore.Domain.Books
         public int PublisherId { get; }
         public int? Year { get; }
         public string ISBN { get; }
-        public string Summary { get; }
+        public string? Summary { get; }
         public decimal Price { get; }
         public int Quantity { get; }
-        public Stream CoverImage { get; }
-        public string CoverImageFileName { get; }
+        public Stream? CoverImage { get; }
+        public string? CoverImageFileName { get; }
     }
 }

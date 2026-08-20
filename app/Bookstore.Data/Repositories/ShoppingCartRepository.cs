@@ -1,35 +1,33 @@
-﻿using Bookstore.Domain.Carts;
-using System.Threading.Tasks;
-using System.Data.Entity;
-using System.Linq;
+using Bookstore.Domain.Carts;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bookstore.Data.Repositories
 {
     public class ShoppingCartRepository : IShoppingCartRepository
     {
-        private readonly ApplicationDbContext dbContext;
+        private readonly ApplicationDbContext _dbContext;
 
         public ShoppingCartRepository(ApplicationDbContext dbContext)
         {
-            this.dbContext = dbContext;
+            _dbContext = dbContext;
         }
 
         async Task IShoppingCartRepository.AddAsync(ShoppingCart shoppingCart)
         {
-            await Task.Run(() => dbContext.ShoppingCart.Add(shoppingCart));
+            await _dbContext.ShoppingCart.AddAsync(shoppingCart);
         }
 
-        async Task<ShoppingCart> IShoppingCartRepository.GetAsync(string correlationId)
+        async Task<ShoppingCart?> IShoppingCartRepository.GetAsync(string correlationId)
         {
-            return await dbContext.ShoppingCart
+            return await _dbContext.ShoppingCart
                 .Include(x => x.ShoppingCartItems)
-                .Include(x => x.ShoppingCartItems.Select(y => y.Book))
+                    .ThenInclude(y => y.Book)
                 .SingleOrDefaultAsync(x => x.CorrelationId == correlationId);
         }
 
         async Task IShoppingCartRepository.SaveChangesAsync()
         {
-            await dbContext.SaveChangesAsync();
+            await _dbContext.SaveChangesAsync();
         }
     }
 }

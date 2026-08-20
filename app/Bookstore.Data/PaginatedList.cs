@@ -1,38 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
 
 namespace Bookstore.Domain
 {
     public class PaginatedList<T> : List<T>, IPaginatedList<T> where T : Entity
     {
-        private readonly IQueryable<T> source;
-        private readonly int pageIndex;
-        private readonly int pageSize;
+        private readonly IQueryable<T> _source;
+        private readonly int _pageIndex;
+        private readonly int _pageSize;
 
         public int PageIndex { get; private set; }
 
         public int TotalPages { get; private set; }
 
-        private PaginatedList(){ }
+        private PaginatedList() { _source = null!; }
 
-        public PaginatedList(IQueryable<T> source, int pageIndex, int pageSize) 
+        public PaginatedList(IQueryable<T> source, int pageIndex, int pageSize)
         {
-            this.source = source;
-            this.pageIndex = pageIndex;
-            this.pageSize = pageSize;
+            _source = source;
+            _pageIndex = pageIndex;
+            _pageSize = pageSize;
         }
 
         public async Task PopulateAsync()
         {
-            var count = await source.CountAsync();
-            var items = await source.OrderBy(x => x.Id).Skip((pageIndex - 1) * pageSize).Take(pageSize).ToListAsync();
+            var count = await _source.CountAsync();
+            var items = await _source.OrderBy(x => x.Id).Skip((_pageIndex - 1) * _pageSize).Take(_pageSize).ToListAsync();
 
-            PageIndex = pageIndex;
-
-            TotalPages = (int)Math.Ceiling(count / (double)pageSize);
+            PageIndex = _pageIndex;
+            TotalPages = (int)Math.Ceiling(count / (double)_pageSize);
 
             AddRange(items);
         }
@@ -41,11 +36,8 @@ namespace Bookstore.Domain
 
         public bool HasNextPage => PageIndex < TotalPages;
 
-        //TODO Consider pulling this out into its own class, e.g. PaginationButtonGenerator
         public IEnumerable<int> GetPageList(int count)
         {
-            //https://jithilmt.medium.com/logic-of-building-a-pagination-ui-component-a-thought-process-f057ee2d487e
-
             var pagesCount = 1;
             var newPagesCount = 1;
             var start = PageIndex;
@@ -66,13 +58,9 @@ namespace Bookstore.Domain
                 }
 
                 if (newPagesCount == pagesCount)
-                {
                     break;
-                }
                 else
-                {
                     pagesCount = newPagesCount;
-                }
             }
 
             return Enumerable.Range(start, pagesCount);

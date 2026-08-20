@@ -1,6 +1,5 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Web.Mvc;
+using DomainAddress = Bookstore.Domain.Addresses.Address;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Bookstore.Web.ViewModel.Address
 {
@@ -8,38 +7,41 @@ namespace Bookstore.Web.ViewModel.Address
     {
         public AddressCreateUpdateViewModel() { }
 
-        public AddressCreateUpdateViewModel(string returnUrl)
+        public AddressCreateUpdateViewModel(string? returnUrl)
         {
             ReturnUrl = returnUrl;
         }
 
-        public AddressCreateUpdateViewModel(Domain.Addresses.Address address, string returnUrl)
+        public AddressCreateUpdateViewModel(DomainAddress? address, string? returnUrl)
         {
-            Id = address.Id;
-            AddressLine1 = address.AddressLine1;
-            AddressLine2 = address.AddressLine2;
-            City = address.City;
-            Country = address.Country;
-            State = address.State;
-            ZipCode = address.ZipCode;
+            if (address != null)
+            {
+                Id = address.Id;
+                AddressLine1 = address.AddressLine1;
+                AddressLine2 = address.AddressLine2;
+                City = address.City;
+                Country = address.Country;
+                State = address.State;
+                ZipCode = address.ZipCode;
+            }
             ReturnUrl = returnUrl;
         }
 
         public int Id { get; set; }
 
-        public string AddressLine1 { get; set; }
+        public string? AddressLine1 { get; set; }
 
-        public string AddressLine2 { get; set; }
+        public string? AddressLine2 { get; set; }
 
-        public string City { get; set; }
+        public string? City { get; set; }
 
-        public string State { get; set; }
+        public string? State { get; set; }
 
-        public string Country { get; set; }
+        public string? Country { get; set; }
 
-        public string ZipCode { get; set; }
+        public string? ZipCode { get; set; }
 
-        public string ReturnUrl { get; set; }
+        public string? ReturnUrl { get; set; }
 
         public IEnumerable<SelectListItem> States => new List<SelectListItem>
         {
@@ -97,5 +99,4 @@ namespace Bookstore.Web.ViewModel.Address
             new SelectListItem { Value = "WY", Text = "Wyoming" }
         };
     }
-
 }

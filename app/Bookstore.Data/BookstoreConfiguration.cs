@@ -1,63 +1,59 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
+using Microsoft.Extensions.Configuration;
 
 namespace BobsBookstoreClassic.Data
 {
+    /// <summary>
+    /// Static configuration accessor that wraps IConfiguration for backward compatibility.
+    /// Must be initialized at startup via Initialize(IConfiguration).
+    /// </summary>
     public sealed class BookstoreConfiguration
     {
-        private static readonly Lazy<BookstoreConfiguration> Lazy = new Lazy<BookstoreConfiguration>(() => new BookstoreConfiguration());
+        private static readonly Dictionary<string, string> _appSettings = new(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, string> _connectionStrings = new(StringComparer.OrdinalIgnoreCase);
 
-        private static BookstoreConfiguration Instance => Lazy.Value;
+        private BookstoreConfiguration() { }
 
-        private readonly Dictionary<string, string> _appSettings = new Dictionary<string, string>();
-        private readonly Dictionary<string, string> _connectionStrings = new Dictionary<string, string>();
-
-        private BookstoreConfiguration()
+        /// <summary>Call once at application startup from Program.cs.</summary>
+        public static void Initialize(IConfiguration configuration)
         {
-            foreach (string key in ConfigurationManager.AppSettings)
+            foreach (var item in configuration.AsEnumerable())
             {
-                _appSettings[key] = ConfigurationManager.AppSettings[key];
-
-                if (Environment.GetEnvironmentVariable(key) != null)
-                {
-                    _appSettings[key] = Environment.GetEnvironmentVariable(key);
-                }
+                if (item.Value != null)
+                    _appSettings[item.Key] = item.Value;
             }
 
-            foreach (ConnectionStringSettings connectionStringSettings in ConfigurationManager.ConnectionStrings)
+            var connStrSection = configuration.GetSection("ConnectionStrings");
+            foreach (var item in connStrSection.GetChildren())
             {
-                _connectionStrings[connectionStringSettings.Name] = connectionStringSettings.ConnectionString;
-
+                if (item.Value != null)
+                    _connectionStrings[item.Key] = item.Value;
             }
         }
 
         public static void AddSetting(string key, string value)
         {
-            Instance._appSettings[key] = value;
+            _appSettings[key] = value;
         }
 
         public static string GetSetting(string key)
         {
-            return Instance._appSettings[key];
+            return _appSettings.TryGetValue(key, out var val) ? val : string.Empty;
         }
 
         public static T GetSetting<T>(string key)
         {
-            var value = Instance._appSettings[key];
-
+            var value = GetSetting(key);
             return (T)Convert.ChangeType(value, typeof(T));
         }
 
         public static void AddConnectionString(string key, string value)
         {
-            Instance._connectionStrings[key] = value;
+            _connectionStrings[key] = value;
         }
 
         public static string GetConnectionString(string key)
         {
-            return Instance._connectionStrings[key];
+            return _connectionStrings.TryGetValue(key, out var val) ? val : string.Empty;
         }
-
     }
 }

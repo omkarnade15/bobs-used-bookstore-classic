@@ -1,77 +1,66 @@
-﻿using Bookstore.Domain.Addresses;
+using Bookstore.Domain.Addresses;
 using Bookstore.Domain.Customers;
 using Bookstore.Web.Helpers;
 using Bookstore.Web.ViewModel.Address;
-using System.Threading.Tasks;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Bookstore.Web.Controllers
 {
     public class AddressController : Controller
     {
-        private readonly IAddressService addressService;
-        private readonly ICustomerService customerService;
+        private readonly IAddressService _addressService;
+        private readonly ICustomerService _customerService;
 
         public AddressController(IAddressService addressService, ICustomerService customerService)
         {
-            this.addressService = addressService;
-            this.customerService = customerService;
+            _addressService = addressService;
+            _customerService = customerService;
         }
 
-        public async Task<ActionResult> Index()
+        public async Task<IActionResult> Index()
         {
-            var addresses = await addressService.GetAddressesAsync(User.GetSub());
-
+            var addresses = await _addressService.GetAddressesAsync(User.GetSub()!);
             return View(new AddressIndexViewModel(addresses));
         }
 
-        public ActionResult Create(string returnUrl)
+        public IActionResult Create(string? returnUrl)
         {
             var model = new AddressCreateUpdateViewModel(returnUrl);
-
             return View("CreateUpdate", model);
         }
 
         [HttpPost]
-        public async Task<ActionResult> Create(AddressCreateUpdateViewModel model)
+        public async Task<IActionResult> Create(AddressCreateUpdateViewModel model)
         {
             if (!ModelState.IsValid) return View("CreateUpdate", model);
 
-            var dto = new CreateAddressDto(model.AddressLine1, model.AddressLine2, model.City, model.State, model.Country, model.ZipCode, User.GetSub());
-
-            await addressService.CreateAddressAsync(dto);
-
-            return Redirect(model.ReturnUrl);
+            var dto = new CreateAddressDto(model.AddressLine1!, model.AddressLine2, model.City!, model.State!, model.Country!, model.ZipCode!, User.GetSub()!);
+            await _addressService.CreateAddressAsync(dto);
+            return Redirect(model.ReturnUrl ?? "/");
         }
 
-        public async Task<ActionResult> Update(int id, string returnUrl)
+        public async Task<IActionResult> Update(int id, string? returnUrl)
         {
-            var address = await addressService.GetAddressAsync(User.GetSub(), id);
-
+            var address = await _addressService.GetAddressAsync(User.GetSub()!, id);
             return View("CreateUpdate", new AddressCreateUpdateViewModel(address, returnUrl));
         }
 
         [HttpPost]
-        public async Task<ActionResult> Update(AddressCreateUpdateViewModel model)
+        public async Task<IActionResult> Update(AddressCreateUpdateViewModel model)
         {
             if (!ModelState.IsValid) return View(model);
 
-            var dto = new UpdateAddressDto(model.Id, model.AddressLine1, model.AddressLine2, model.City, model.State, model.Country, model.ZipCode, User.GetSub());
-
-            await addressService.UpdateAddressAsync(dto);
-
-            return Redirect(model.ReturnUrl);
+            var dto = new UpdateAddressDto(model.Id, model.AddressLine1!, model.AddressLine2, model.City!, model.State!, model.Country!, model.ZipCode!, User.GetSub()!);
+            await _addressService.UpdateAddressAsync(dto);
+            return Redirect(model.ReturnUrl ?? "/");
         }
 
         [HttpPost]
-        public async Task<ActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var dto = new DeleteAddressDto(id, User.GetSub());
-
-            await addressService.DeleteAddressAsync(dto);
-
+            var dto = new DeleteAddressDto(id, User.GetSub()!);
+            await _addressService.DeleteAddressAsync(dto);
             this.SetNotification("Address deleted");
-
             return RedirectToAction(nameof(Index));
         }
     }

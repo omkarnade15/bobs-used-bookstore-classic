@@ -1,93 +1,77 @@
-﻿using System.Security.Claims;
-using System.Threading.Tasks;
-using Autofac;
-using Autofac.Integration.Owin;
 using BobsBookstoreClassic.Data;
 using Bookstore.Domain.Customers;
 using Bookstore.Web.Helpers;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.Owin.Security;
-using Microsoft.Owin.Security.Cookies;
-using Microsoft.Owin.Security.OpenIdConnect;
-using Owin;
+using System.Security.Claims;
 
 namespace Bookstore.Web
 {
     public static class AuthenticationConfig
     {
-        public static void ConfigureAuthentication(IAppBuilder app)
+        public static void ConfigureAuthentication(IServiceCollection services)
         {
             if (BookstoreConfiguration.GetSetting("Services/Authentication") == "aws")
             {
-                ConfigureCognitoAuthentication(app);
+                ConfigureCognitoAuthentication(services);
             }
-            else
-            {
-                ConfigureLocalAuthentication(app);
-            }
+            // Local authentication is handled by LocalAuthenticationMiddleware
         }
 
-        private static void ConfigureLocalAuthentication(IAppBuilder app)
+        private static void ConfigureCognitoAuthentication(IServiceCollection services)
         {
-            app.UseMiddlewareFromContainer<LocalAuthenticationMiddleware>();
-        }
-
-        private static void ConfigureCognitoAuthentication(IAppBuilder app)
-        {
-            app.SetDefaultSignInAsAuthenticationType(CookieAuthenticationDefaults.AuthenticationType);
-
-            app.UseCookieAuthentication(new CookieAuthenticationOptions());
-
-            app.UseOpenIdConnectAuthentication(new OpenIdConnectAuthenticationOptions
+            services.AddAuthentication(options =>
             {
-                ClientId = BookstoreConfiguration.GetSetting("Authentication/Cognito/LocalClientId"),
-                MetadataAddress = BookstoreConfiguration.GetSetting("Authentication/Cognito/MetadataAddress"),
-                ResponseType = OpenIdConnectResponseType.Code,
-                RedeemCode = true,
-                Scope = "openid profile",
-                SignInAsAuthenticationType = CookieAuthenticationDefaults.AuthenticationType,
-                UseTokenLifetime = false,
-                SaveTokens = true,
-                TokenValidationParameters = new TokenValidationParameters
+                options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+            })
+            .AddCookie()
+            .AddOpenIdConnect(options =>
+            {
+                options.ClientId = BookstoreConfiguration.GetSetting("Authentication/Cognito/LocalClientId");
+                options.MetadataAddress = BookstoreConfiguration.GetSetting("Authentication/Cognito/MetadataAddress");
+                options.ResponseType = OpenIdConnectResponseType.Code;
+                options.UsePkce = true;
+                options.Scope.Add("openid");
+                options.Scope.Add("profile");
+                options.SaveTokens = true;
+                options.UseTokenLifetime = false;
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
                     NameClaimType = "cognito:username",
                     RoleClaimType = "cognito:groups"
-                },
-                Notifications = new OpenIdConnectAuthenticationNotifications
+                };
+
+                options.Events = new OpenIdConnectEvents
                 {
-                    RedirectToIdentityProvider = x =>
+                    OnRedirectToIdentityProvider = context =>
                     {
-                        x.Options.RedirectUri = x.Request.GetReturnUrl();
-                        x.ProtocolMessage.RedirectUri = x.Request.GetReturnUrl();
-
+                        context.ProtocolMessage.RedirectUri = context.Request.GetReturnUrl();
                         return Task.CompletedTask;
                     },
-                    AuthorizationCodeReceived = x =>
+                    OnAuthorizationCodeReceived = context =>
                     {
-                        x.RedirectUri = x.Request.GetReturnUrl();
-                        x.TokenEndpointRequest.RedirectUri = x.Request.GetReturnUrl();
-
+                        context.TokenEndpointRequest!.RedirectUri = context.Request.GetReturnUrl();
                         return Task.CompletedTask;
                     },
-                    SecurityTokenValidated = async x =>
+                    OnTokenValidated = async context =>
                     {
-                        var scope = x.OwinContext.GetAutofacLifetimeScope();
-                        var service = scope.Resolve<ICustomerService>();
-
-                        x.Request.User = new ClaimsPrincipal(x.AuthenticationTicket.Identity);
-
-                        var identity = (ClaimsIdentity)x.Request.User.Identity;
+                        var service = context.HttpContext.RequestServices.GetRequiredService<ICustomerService>();
+                        var identity = (ClaimsIdentity?)context.Principal?.Identity;
+                        if (identity == null) return;
 
                         var dto = new CreateOrUpdateCustomerDto(
-                            identity.GetSub(),
-                            identity.Name,
-                            identity.FindFirst(y => y.Type.Contains("givenname")).Value,
-                            identity.FindFirst(y => y.Type.Contains("surname")).Value);
+                            identity.GetSub() ?? string.Empty,
+                            identity.Name ?? string.Empty,
+                            identity.FindFirst(c => c.Type.Contains("givenname"))?.Value ?? string.Empty,
+                            identity.FindFirst(c => c.Type.Contains("surname"))?.Value ?? string.Empty);
 
                         await service.CreateOrUpdateCustomerAsync(dto);
                     }
-                }
+                };
             });
         }
     }
